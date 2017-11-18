@@ -6,6 +6,16 @@ from keras.optimizers import SGD
 from keras.regularizers import l2
 from keras.utils import np_utils
 from sklearn import metrics 
+import glob
+import os
+import librosa
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from matplotlib.pyplot import specgram
+import librosa.display
+from sklearn.metrics import precision_recall_fscore_support
+import math
 
 # to run this code, you'll need to load the following data: 
 # train_x, train_y
