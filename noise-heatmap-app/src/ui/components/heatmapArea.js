@@ -4,79 +4,93 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import $ from 'jquery';
-import HeatmapOverlay from 'gmaps-heatmap';
+import firebase from 'firebase'
+var GoogleMapsLoader = require('google-maps'); // only for common js environments 
 
-class _HeatmapArea extends React.Component {
+
+export class HeatmapArea extends React.Component {
   constructor(props) {
     super(props);
   }
 
+  mapStyle = {
+    width: '1024px',
+    padding: '0', 
+    height: '768px',
+    cursor: 'pointer',
+    position: 'relative'
+  };
+
+  map;
+
   render() {
     return ( 
       <div>
-        {/* <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaafUiCMIxXy1uy70THVGRZfIQQ4q9yRA&callback=initMap"
-        type="text/javascript"></script> */}
-        <div id="heatmapArea" style="width:1024px;padding:0;height:768px;cursor:pointer;position:relative;"></div>            
+        <div id="heatmapArea" style={this.mapStyle}></div>            
       </div>
      );
   }
 
   componentDidMount() {
-    // Connect the initMap() function within this class to the global window context,
-    // so Google Maps can invoke it
-    window.initMap = this.initMap;
-    // Asynchronously load the Google Maps script, passing in the callback reference
-    loadJS('https://maps.googleapis.com/maps/api/js?key=AIzaSyAaafUiCMIxXy1uy70THVGRZfIQQ4q9yRA&callback=initMap')
-  }
-
-  initMap() {
-    // get data from Firebase ***
-    var testData = {
-      max: 100,
-      data: [{
-          lat: 48.3333,
-          lng: 16.35,
-          count: 100
-      }, {
-          lat: 51.465558,
-          lng: 0.010986,
-          count: 100
-      }, {
-          lat: 33.5363,
-          lng: -5.044,
-          count: 100
-      }]
-    };
-
-    // initialize standard gmaps, define map properties
-    var myLatlng = new google.maps.LatLng(48.3333, 16.35); // ***
-    var myOptions = {
-        zoom: 3,
-        center: myLatlng,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        disableDefaultUI: false,
-        scrollwheel: true,
-        draggable: true,
-        navigationControl: true,
-        mapTypeControl: false,
-        scaleControl: true,
-        disableDoubleClickZoom: false
-    };
-
-    // create heatmap and overlay with confic properties
-    var map = new google.maps.Map($("#heatmapArea")[0], myOptions);
-    var heatmap = new HeatmapOverlay(map, {
-        "radius": 2,
-        "maxOpacity": 1,
-        "scaleRadius": true,
-        "useLocalExtrema": true,
-        latField: 'lat',
-        lngField: 'lng',
-        valueField: 'count'
+    var compRef = this;
+    GoogleMapsLoader.KEY = 'AIzaSyAaafUiCMIxXy1uy70THVGRZfIQQ4q9yRA';    
+    GoogleMapsLoader.LIBRARIES = ['visualization'];
+    console.log("loading lib");
+    GoogleMapsLoader.load(function(google) {
+      console.log("creating map");
+      compRef.map = new google.maps.Map(document.getElementById('heatmapArea'), compRef.getMapOptions());
+      compRef.loadData()
     });
-    heatmap.setData(testData);
+    // loadJS('https://maps.googleapis.com/maps/api/js?key=AIzaSyAaafUiCMIxXy1uy70THVGRZfIQQ4q9yRA&libraries=visualization&callback=libLoaded');
   }
 
+  getMapOptions() {
+    var hackWestern = new google.maps.LatLng(42.9993152,	-81.2784599); // geolocation feature      
+    return {
+      center: hackWestern,
+      zoom: 20,
+      // styles: [{
+      //   featureType: 'poi',
+      //   stylers: [{ visibility: 'off' }]  // Turn off points of interest.
+      // }, {
+      //   featureType: 'transit.station',
+      //   stylers: [{ visibility: 'off' }]  // Turn off bus stations, train stations, etc.
+      // }],
+      disableDoubleClickZoom: false
+    };
+  }
+
+  applyHeadMap(data) {
+    // Create a heatmap.
+    var heatmap = new google.maps.visualization.HeatmapLayer({
+      data: data
+    });
+    heatmap.setMap(this.map);
+  }
+
+  loadData() {
+    // set up firebase
+    var config = {
+      apiKey: "AIzaSyBWxP2O5cTKispWRieHmN2DAvE-WysD9vc",
+      authDomain: "noisepollutiondetection-74011.firebaseapp.com",
+      databaseURL: "https://noisepollutiondetection-74011.firebaseio.com",
+      projectId: "noisepollutiondetection-74011",
+      storageBucket: "",
+      messagingSenderId: "1047190133742"
+    };
+    firebase.initializeApp(config);
+
+    // get data
+    var starCountRef = firebase.database().ref('EventObj');
+    var compRef = this;
+    starCountRef.on('value', function(result) {
+      console.log("db call:", result.val());
+      var data = Object.values(result.val()).map((row) => {
+        return {location: new google.maps.LatLng(row.Location.latitude,	row.Location.longitude), weight: row.amplitude}
+      })
+      compRef.applyHeadMap(data);
+    });
+  };
 };
 
 function loadJS(src) {
@@ -87,5 +101,4 @@ function loadJS(src) {
   ref.parentNode.insertBefore(script, ref);
 };
 
-export const HeatmapArea = connect(null, null)(_HeatmapArea);
 

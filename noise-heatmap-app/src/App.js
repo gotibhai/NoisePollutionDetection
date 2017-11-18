@@ -9,10 +9,7 @@ class App extends Component {
         <header className="App-header">
           <h1 className="App-title">Noise Pollution Heatmap</h1>
         </header>
-        <p className="App-intro">
-          Using <code>heatmap.js</code> and a gmaps plugin.
-          <HeatmapArea/>
-        </p>
+        <HeatmapArea/>
       </div>
     );
   }
