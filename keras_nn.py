@@ -133,7 +133,7 @@ sgd = SGD(lr=0.001, momentum=0.0, decay=0.0, nesterov=False)
 # the highest classification accuracy
 model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=sgd)
 
-model.fit(train_x, train_y, validation_data=(valid_x, valid_y), callbacks=[earlystop], batch_size=32, nb_epoch=50)
+model.fit(train_x, train_y, batch_size=32, nb_epoch=50)
 
 # finally, evaluate the model using the withheld test dataset
 
