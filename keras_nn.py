@@ -60,7 +60,7 @@ def one_hot_encode(labels):
     one_hot_encode[np.arange(n_labels), labels] = 1
     return one_hot_encode
     
-parent_dir = 'SOUND'
+parent_dir = 'UrbanSound'
 tr_sub_dirs = ["fold1test"]
 tr_features,tr_labels = extract_features(parent_dir,tr_sub_dirs)
 tr_labels = one_hot_encode(tr_labels)
