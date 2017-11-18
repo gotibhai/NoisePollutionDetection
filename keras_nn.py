@@ -61,18 +61,29 @@ def one_hot_encode(labels):
     return one_hot_encode
     
 parent_dir = 'SOUND'
-tr_sub_dirs = ["fold1test","fold2test"]
+tr_sub_dirs = ["fold1test"]
 tr_features,tr_labels = extract_features(parent_dir,tr_sub_dirs)
 tr_labels = one_hot_encode(tr_labels)
 train_x = tr_features
 train_y = tr_labels
+print(train_x)
+print(train_y)
+
+vl_sub_dirs = ["fold2test"]
+vl_features,vl_labels = extract_features(parent_dir,vl_sub_dirs)
+vl_labels = one_hot_encode(vl_labels)
+val_x = vl_features
+val_y = vl_labels
+print(val_x)
+print(val_y)
 
 ts_sub_dirs= ['fold3test']
 ts_features,ts_labels = extract_features(parent_dir,ts_sub_dirs)
 ts_labels = one_hot_encode(ts_labels)
 test_x = ts_features
 test_y = ts_labels
-
+print(test_x)
+print(test_y)
 
 # data dimension parameters 
 frames = 41
@@ -133,7 +144,7 @@ sgd = SGD(lr=0.001, momentum=0.0, decay=0.0, nesterov=False)
 # the highest classification accuracy
 model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=sgd)
 
-model.fit(train_x, train_y, batch_size=32, nb_epoch=50)
+model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=32, nb_epoch=50)
 
 # finally, evaluate the model using the withheld test dataset
 
