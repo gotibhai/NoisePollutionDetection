@@ -3,7 +3,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import SGD
-from keras.regularizers import l2, activity_l2
+from keras.regularizers import l2
 from keras.utils import np_utils
 from sklearn import metrics 
 
