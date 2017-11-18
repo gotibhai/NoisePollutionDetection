@@ -61,7 +61,7 @@ def one_hot_encode(labels):
     return one_hot_encode
     
 parent_dir = 'UrbanSound'
-tr_sub_dirs = ["fold1test"]
+tr_sub_dirs = ["fold1test","fold2test"]
 tr_features,tr_labels = extract_features(parent_dir,tr_sub_dirs)
 tr_labels = one_hot_encode(tr_labels)
 train_x = tr_features
@@ -69,7 +69,7 @@ train_y = tr_labels
 print(train_x)
 print(train_y)
 
-vl_sub_dirs = ["fold2test"]
+vl_sub_dirs = ["fold1test","fold2test"]
 vl_features,vl_labels = extract_features(parent_dir,vl_sub_dirs)
 vl_labels = one_hot_encode(vl_labels)
 val_x = vl_features
@@ -91,60 +91,50 @@ bands = 60
 num_channels = 2
 num_labels = test_y.shape[1]
 
-# this model implements the 5 layer CNN described in https://arxiv.org/pdf/1608.04363.pdf
-# be aware, there are 2 main differences: 
-# the input is 60x41 data frames with 2 channels => (60,41,2) tensors 
-# the paper seems to report using 128x128 data frames (with no mention of channels)
-# the paper also uses a receptive field size of 5x5 - as our input is smaller, I'm using 3x3
-
-f_size = 3
-
+# start by creating a linear stack of layers
 model = Sequential()
 
-# Layer 1 - 24 filters with a receptive field of (f,f), i.e. W has the shape (24,1,f,f). 
-# This is followed by (4,2) max-pooling over the last two dimensions and a ReLU activation function.
-model.add(Convolution2D(24, f_size, f_size, border_mode='same', input_shape=(bands, frames, num_channels)))
-model.add(MaxPooling2D(pool_size=(4, 2)))
-model.add(Activation('relu'))
+# will use filters of size 2x2 
+f_size = 2
 
-# Layer 2 - 48 filters with a receptive field of (f,f), i.e. W has the shape (48,24,f,f). 
-# Like L1 this is followed by (4,2) max-pooling and a ReLU activation function.
-model.add(Convolution2D(48, f_size, f_size, border_mode='same'))
-model.add(MaxPooling2D(pool_size=(4, 2)))
+# first layer applies 32 convolution filters 
+# input: 60x41 data frames with 2 channels => (60,41,2) tensors
+model.add(Convolution2D(32, f_size, f_size, border_mode='same', input_shape=(bands, frames, num_channels)))
 model.add(Activation('relu'))
-
-# Layer 3 - 48 filters with a receptive field of (f,f), i.e. W has the shape (48, 48, f, f). 
-# This is followed by a ReLU but no pooling.
-model.add(Convolution2D(48, f_size, f_size, border_mode='valid'))
+model.add(Convolution2D(32, f_size, f_size))
 model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.15))
 
-# flatten output into a single dimension, let Keras do shape inference
+# next layer applies 64 convolution filters
+model.add(Convolution2D(64, f_size, f_size, border_mode='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, f_size, f_size))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.2))
+
+# flatten output into a single dimension 
+# Keras will do the shape inference automatically
 model.add(Flatten())
 
-# Layer 4 - a fully connected NN layer of 64 hidden units, L2 penalty of 0.001
-model.add(Dense(64, W_regularizer=l2(0.001)))
+# then a fully connected NN layer
+model.add(Dense(256))
 model.add(Activation('relu'))
 model.add(Dropout(0.5))
 
-# Layer 5 - an output layer with one output unit per class, with L2 penalty, 
-# followed by a softmax activation function
-model.add(Dense(num_labels, W_regularizer=l2(0.001)))
-model.add(Dropout(0.5))
+# finally, an output layer with one node per class
+model.add(Dense(num_labels))
 model.add(Activation('softmax'))
 
+# use the Adam optimiser
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
 
-# create a SGD optimiser
-sgd = SGD(lr=0.001, momentum=0.0, decay=0.0, nesterov=False)
+# now compile the model, Keras will take care of the Tensorflow boilerplate
+model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adam)
 
-# a stopping function should the validation loss stop improving
-#earlystop = EarlyStopping(monitor='val_loss', patience=1, verbose=0, mode='auto')
-
-# compile and fit model, reduce epochs if you want a result faster
-# the validation set is used to identify parameter settings (epoch) that achieves 
-# the highest classification accuracy
-model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=sgd)
-
-model.fit(train_x, train_y, validation_data=(val_x, val_y), batch_size=32, nb_epoch=50)
+# for quicker training, just using one epoch, you can experiment with more
+model.fit(train_x, train_y, validation_data=(valid_x, valid_y), batch_size=32, nb_epoch=1)
 
 # finally, evaluate the model using the withheld test dataset
 
