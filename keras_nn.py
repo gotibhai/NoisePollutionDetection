@@ -126,7 +126,7 @@ model.add(Activation('softmax'))
 sgd = SGD(lr=0.001, momentum=0.0, decay=0.0, nesterov=False)
 
 # a stopping function should the validation loss stop improving
-earlystop = EarlyStopping(monitor='val_loss', patience=1, verbose=0, mode='auto')
+#earlystop = EarlyStopping(monitor='val_loss', patience=1, verbose=0, mode='auto')
 
 # compile and fit model, reduce epochs if you want a result faster
 # the validation set is used to identify parameter settings (epoch) that achieves 
