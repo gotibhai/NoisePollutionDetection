@@ -16,7 +16,7 @@ export class HeatmapArea extends React.Component {
   map;
   mapStyle = {
     'position': 'absolute',
-    'width': '100%',
+    'width': 'calc(100% - 200px)',
     'height': '100%',
     'marginLeft': '200px',
   };
