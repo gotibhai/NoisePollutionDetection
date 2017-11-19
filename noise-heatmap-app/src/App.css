@@ -34,7 +34,8 @@
 }
 
 .App-select-menu {
-  color: white;
+  display: flex  !important;
+  justify-content: center !important;
 }
 
 .pad {

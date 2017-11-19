@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import $ from 'jquery';
 import firebase from 'firebase'
 import {show, ACTION_TYPE} from 'js-snackbar';
+import {timeFilterValues} from '../../App.js'
 require('../../../node_modules/js-snackbar/dist/snackbar.css');
 
 var GoogleMapsLoader = require('google-maps'); // only for common js environments 
@@ -17,6 +18,7 @@ export class HeatmapArea extends React.Component {
 
   dataPoints;
   map;
+  heatmap;
   mapStyle = {
     'position': 'absolute',
     'width': 'calc(100% - 200px)',
@@ -28,6 +30,39 @@ export class HeatmapArea extends React.Component {
     return ( 
         <div id="heatmapArea" style={this.mapStyle}></div>            
      );
+  }
+
+  componentWillReceiveProps(nextProps) {
+    console.log('next props:', nextProps);
+    var seconds= 0;
+    switch (nextProps.timeFilter) {
+      case timeFilterValues.ALL:
+        return;
+      case timeFilterValues.MINUTE:
+        seconds = 60;
+        break;
+      case timeFilterValues.HOUR:
+        seconds = 3600;
+        break;
+      case timeFilterValues.DAY:
+        seconds = 86400;
+        break;
+      case timeFilterValues.WEEK:
+        seconds = 604800;
+        break;
+    }
+    console.log("max allowed seconds: ", seconds);    
+    var heatPoints = [];
+    this.dataPoints.forEach(point => {
+      var startDate = new Date(point.time);
+      // Do your operations
+      var endDate = new Date();
+      var secondSinceEvent = (endDate.getTime() - startDate.getTime()) / 1000;
+      if (secondSinceEvent < seconds) {
+        heatPoints.push({location: new google.maps.LatLng(point.location.lat, point.location.lng), weight: point.amplitude});
+      }
+    });
+    this.heatmap.setData(heatPoints);
   }
 
   componentDidMount() {
@@ -44,17 +79,18 @@ export class HeatmapArea extends React.Component {
     var hackWestern = new google.maps.LatLng(42.9993152,	-81.2784599); // geolocation feature      
     return {
       center: hackWestern,
-      zoom: 20,
+      zoom: 19,
       disableDoubleClickZoom: true
     };
   }
 
   applyHeadMap(data) {
     // create the heatmap overlay
-    var heatmap = new google.maps.visualization.HeatmapLayer({
-      data: data
+    this.heatmap = new google.maps.visualization.HeatmapLayer({
+      data: data,
+      radius: 40
     });
-    heatmap.setMap(this.map);
+    this.heatmap.setMap(this.map);
   }
 
   loadData() {
@@ -90,6 +126,10 @@ export class HeatmapArea extends React.Component {
       compRef.onDataLoaded();
     });
   };
+
+  getTypes() {
+    return ['hi', 'there'];
+  }
 
   onDataLoaded() {
     // create infowindow to display noise type 
@@ -135,12 +175,26 @@ export class HeatmapArea extends React.Component {
   }
 
   checkForEmergency() {
+    const compRef = this;
     this.dataPoints.forEach(element => {
       if(element.type === "siren") {
-        show({text: 'EMERGENCY', backgroundColor: 'red'});
-        
+        show({text: 'EMERGENCY', actionType: ACTION_TYPE.TEXT, actionText: 'Go To', pos: 'top-right', backgroundColor: 'red', onActionClick: (el) => {
+          compRef.zoomTo(element);
+        }});
       }
     });
+  }
+
+  zoomTo(item) {
+    var loc = new google.maps.LatLng(item.location.lat, item.location.lng);
+    this.map.setMapTypeId(google.maps.MapTypeId.HYBRID)
+    this.map.panTo(loc);    
+   this.map.setZoom(25);
+    var mev = {
+      stop: null,
+      latLng: loc
+    }
+    google.maps.event.trigger(this.map, 'click', mev);
   }
 };
 
