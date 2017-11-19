@@ -13,6 +13,7 @@ export class HeatmapArea extends React.Component {
     super(props);
   }
 
+  dataPoints;
   map;
   mapStyle = {
     'position': 'absolute',
@@ -61,6 +62,8 @@ export class HeatmapArea extends React.Component {
     heatmap.setMap(this.map);
   }
 
+
+
   loadData() {
     // connect to firebase
     var config = {
@@ -75,29 +78,52 @@ export class HeatmapArea extends React.Component {
 
     // create infowindow to display noise type
     var infowindow =  new google.maps.InfoWindow({
-      content: "TYPE"
+      content: "TYPE",
     });
-    // add listener for mouse clicks on map
+    const compRef = this;
     google.maps.event.addListener(this.map, 'click', function(event) {
-      //console.log('click at:', event.latLng)
-      var pos = {lat: parseInt(event.latLng.lat()), lng: parseInt(event.latLng.lng())};
-      console.log('pos', pos);
-      infowindow.setPosition(pos);
-      infowindow.open(this.map);
+      var clickLocation = {lat: parseFloat(event.latLng.lat()), lng: parseFloat(event.latLng.lng())};
+      console.log('click location:', clickLocation);
+      
+      // check for closest noise in acceptable range
+      var closestNoise = {type: ''};
+      for (var pos = 0; pos < compRef.dataPoints.length; pos++) {
+        var eucDist = calcCrow(clickLocation, compRef.dataPoints[pos].location);
+        if (pos === 0 || eucDist < closestNoise.dist) {
+          closestNoise = {
+            type: compRef.dataPoints[pos].type, 
+            dist: eucDist,
+            loc: compRef.dataPoints[pos].location
+          }
+        }
+      }
+
+      // update infowindow
+      console.log('closest noise:', closestNoise)
+      if (closestNoise.type != '') {
+        infowindow.setContent(closestNoise.type);      
+        infowindow.setPosition(closestNoise.loc);
+        infowindow.open(compRef.map);
+      }
     });
     
     // get point data and parse it
     var starCountRef = firebase.database().ref('EventObj');
-    var compRef = this;
     starCountRef.on('value', function(result) {
       console.log("db call:", result.val());
-      var data = []
+      compRef.dataPoints = [];
+      var heatPoints = [];
       if (result.val()) {
-        data = Object.values(result.val()).map((row) => {
-          return {location: new google.maps.LatLng(row.Location.latitude,	row.Location.longitude), weight: row.amplitude}
+        // database map to info object array
+        compRef.dataPoints = Object.values(result.val()).map((row) => {
+          return {location: {lat: row.Location.latitude, lng: row.Location.longitude}, amplitude: row.amplitude, time: row.time, type: row.type}
+        });
+        // info object array map to heatmap array
+        heatPoints = compRef.dataPoints.map((item) => {
+          return {location: new google.maps.LatLng(item.location.lat, item.location.lng), weight: item.amplitude}
         });
       }
-      compRef.applyHeadMap(data);
+      compRef.applyHeadMap(heatPoints);
     });
   };
 };
@@ -109,5 +135,30 @@ function loadJS(src) {
   script.async = true;
   ref.parentNode.insertBefore(script, ref);
 };
+
+function calcCrow(click, point) 
+{
+  var lat1 = click.lat;
+  var lat2 = point.lat;
+  var lon1 = click.lng;
+  var lon2 = point.lng;
+  var R = 6371; // km
+  var dLat = toRad(lat2-lat1);
+  var dLon = toRad(lon2-lon1);
+  var lat1 = toRad(lat1);
+  var lat2 = toRad(lat2);
+
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c;
+  return d;
+}
+
+// Converts numeric degrees to radians
+function toRad(Value) 
+{
+    return Value * Math.PI / 180;
+}
 
 
