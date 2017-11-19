@@ -76,7 +76,7 @@ export class HeatmapArea extends React.Component {
       if (result.val()) {
         // database map to info object array
         compRef.dataPoints = Object.values(result.val()).map((row) => {
-          return {location: {lat: row.Location.latitude, lng: row.Location.longitude}, amplitude: row.amplitude, time: row.time, type: row.type}
+          return {location: {lat: row.Location.latitude, lng: row.Location.longitude}, amplitude: row.amplitude, time: row.time, type: row.type, confidence: row.confidence}
         });
         // info object array map to heatmap array
         heatPoints = compRef.dataPoints.map((item) => {
@@ -89,7 +89,8 @@ export class HeatmapArea extends React.Component {
   };
 
   onDataLoaded() {
-    // create infowindow to display noise type    
+    // create infowindow to display noise type 
+    // checkForEmergency   
     var infowindow =  new google.maps.InfoWindow({
       content: "TYPE",
     });
@@ -106,7 +107,8 @@ export class HeatmapArea extends React.Component {
           closestNoise = {
             type: compRef.dataPoints[pos].type, 
             dist: eucDist,
-            loc: compRef.dataPoints[pos].location
+            loc: compRef.dataPoints[pos].location,
+            confidence: compRef.dataPoints[pos].confidence
           }
         }
       }
@@ -118,7 +120,8 @@ export class HeatmapArea extends React.Component {
         if (closestNoise.type === 'Couldn\'t catch it') {
           closestNoise.type = 'Unable to classify';
         }
-        infowindow.setContent(closestNoise.type);      
+        
+        infowindow.setContent(closestNoise.type + '\n' + 'Confidence: ' + parseInt(closestNoise.confidence));      
         infowindow.setPosition(closestNoise.loc);
         infowindow.open(compRef.map);
       }
