@@ -4,6 +4,9 @@ import React from 'react';
 import { connect } from 'react-redux';
 import $ from 'jquery';
 import firebase from 'firebase'
+import {show, ACTION_TYPE} from 'js-snackbar';
+require('../../../node_modules/js-snackbar/dist/snackbar.css');
+
 var GoogleMapsLoader = require('google-maps'); // only for common js environments 
 
 // smart component
@@ -90,7 +93,7 @@ export class HeatmapArea extends React.Component {
 
   onDataLoaded() {
     // create infowindow to display noise type 
-    // checkForEmergency   
+    this.checkForEmergency();   
     var infowindow =  new google.maps.InfoWindow({
       content: "TYPE",
     });
@@ -121,12 +124,21 @@ export class HeatmapArea extends React.Component {
           closestNoise.type = 'Unable to classify';
         }
         
-        infowindow.setContent(closestNoise.type + '\n' + 'Confidence: ' + parseInt(closestNoise.confidence));      
+        infowindow.setContent(closestNoise.type.toUpperCase() + ' - ' + 'Confidence: ' + parseInt(closestNoise.confidence));      
         infowindow.setPosition(closestNoise.loc);
         infowindow.open(compRef.map);
       }
       else {
         infowindow.close();
+      }
+    });
+  }
+
+  checkForEmergency() {
+    this.dataPoints.forEach(element => {
+      if(element.type === "siren") {
+        show({text: 'EMERGENCY', backgroundColor: 'red'});
+        
       }
     });
   }
