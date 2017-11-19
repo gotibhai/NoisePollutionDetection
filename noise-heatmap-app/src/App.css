@@ -11,6 +11,7 @@
   z-index: 1;
   overflow: auto;
   background-color: black;  
+  /* background-color: white; */
 }
 
 .App-logo {
@@ -30,6 +31,14 @@
   font-size: 0.8em;
   color: white;
   text-align: center;
+}
+
+.App-select-menu {
+  color: white;
+}
+
+.pad {
+  margin-bottom: 30px;
 }
 
 /* .App-header {
