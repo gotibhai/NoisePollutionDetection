@@ -20,7 +20,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
 
-        Log.d("rowan", "starting service");
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},
@@ -41,6 +40,6 @@ public class MainActivity extends Activity {
 
 
         startService(new Intent(this, NoiseDetectionService.class));
-//        finish();
+        finish();
     }
 }

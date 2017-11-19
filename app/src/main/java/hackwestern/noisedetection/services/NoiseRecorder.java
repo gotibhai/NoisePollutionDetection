@@ -4,9 +4,11 @@ import android.media.MediaRecorder;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Base64;
+import android.util.Log;
 
 import java.io.IOException;
 
+import hackwestern.noisedetection.NoiseRecordingCallback;
 import hackwestern.noisedetection.models.RecordingResult;
 import hackwestern.noisedetection.utils.FileUtils;
 import io.reactivex.Observable;
@@ -22,13 +24,19 @@ import static hackwestern.noisedetection.services.AmplitudeMonitor.AMPLITUDE_THR
 
 public class NoiseRecorder {
 
-    private BehaviorSubject<RecordingResult> resultSubject = BehaviorSubject.create();
+    private static final int MIN_RECORD_TIME = 1000;
+
     private MediaRecorder mRecorder;
     private String audioFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/audio_file.mp3";
     private Handler mHandler = new Handler();
     private double totalAmp;
     private double maxAmp;
     private int ampRecordCount;
+    private NoiseRecordingCallback callback;
+
+    NoiseRecorder(NoiseRecordingCallback callback) {
+        this.callback = callback;
+    }
 
     private void startMediaRecorder() {
         if (mRecorder != null) {
@@ -47,26 +55,26 @@ public class NoiseRecorder {
         }
     }
 
-    public Observable<RecordingResult> subscribeToResult() {
-        return resultSubject;
-    }
-
     public void startRecording(double initAmp) {
         startMediaRecorder();
         totalAmp = initAmp;
         maxAmp = initAmp;
-        ampRecordCount = 0;
-        mEndMonitor.run();
+        ampRecordCount = 1;
+        mRecorder.getMaxAmplitude();
+        mHandler.postDelayed(mEndMonitor, MIN_RECORD_TIME);
     }
 
     private Runnable mEndMonitor = new Runnable() {
         @Override
         public void run() {
             double amp = mRecorder.getMaxAmplitude();
+            Log.d("rowan", "recorder got new amp: " + amp);
             NoiseRecorder.this.totalAmp += amp;
             NoiseRecorder.this.ampRecordCount++;
             NoiseRecorder.this.maxAmp = Math.max(NoiseRecorder.this.maxAmp, amp);
             double avgAmp = NoiseRecorder.this.totalAmp / NoiseRecorder.this.ampRecordCount;
+            Log.d("rowan", "newAvg: " + avgAmp);
+
             if (avgAmp < AMPLITUDE_THRESHOLD) {
                 NoiseRecorder.this.stopAndSendResult();
             } else {
@@ -76,8 +84,6 @@ public class NoiseRecorder {
     };
 
     private void stopAndSendResult() {
-        mRecorder.stop();
-        mRecorder.reset();
         mRecorder.release();
         mRecorder = null;
         byte[] bytes = new byte[0];
@@ -90,6 +96,6 @@ public class NoiseRecorder {
         RecordingResult res = new RecordingResult();
         res.setData(encoded);
         res.setMaxAmplitude(maxAmp);
-        resultSubject.onNext(res);
+        callback.onRecordingResult(res);
     }
 }

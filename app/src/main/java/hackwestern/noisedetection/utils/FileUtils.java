@@ -33,8 +33,6 @@ public class FileUtils {
          */
         public static final long ONE_GB = ONE_KB * ONE_MB;
 
-
-
         public static byte[] readFileToString(
                 String path) throws IOException {
             File file = new File(path);

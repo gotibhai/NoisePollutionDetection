@@ -30,6 +30,8 @@ import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import hackwestern.noisedetection.AmplitudeMonitorCallback;
+import hackwestern.noisedetection.NoiseRecordingCallback;
 import hackwestern.noisedetection.models.NoiseEventInfo;
 import hackwestern.noisedetection.models.RecordingResult;
 import hackwestern.noisedetection.utils.APIUtils;
@@ -48,8 +50,25 @@ import retrofit2.Response;
 
 public class NoiseDetectionService extends Service {
     private Location mLocation;
-    private AmplitudeMonitor amplitudeMonitor = new AmplitudeMonitor();
-    private NoiseRecorder noiseRecorder = new NoiseRecorder();
+    private AmplitudeMonitorCallback monitorCallback = new AmplitudeMonitorCallback() {
+
+        @Override
+        public void onTresholdPassed(double amp) {
+            Log.d("rowan", "recording...");
+            startRecording(amp);
+        }
+    };
+
+    private NoiseRecordingCallback recordCallback = new NoiseRecordingCallback() {
+        @Override
+        public void onRecordingResult(RecordingResult result) {
+            Log.d("rowan", "posting...");
+            postData(result);
+            amplitudeMonitor.startMonitoring();
+        }
+    };
+    private AmplitudeMonitor amplitudeMonitor = new AmplitudeMonitor(monitorCallback);
+    private NoiseRecorder noiseRecorder = new NoiseRecorder(recordCallback);
 
     @Nullable
     @Override
@@ -65,25 +84,12 @@ public class NoiseDetectionService extends Service {
     }
 
     void startMonitoring() {
-        amplitudeMonitor.thresholdPassed().subscribeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<Double>() {
-            @Override
-            public void accept(Double initAmp) throws Exception {
-                Log.d("rowan", "recording...");
-                startRecording(initAmp.doubleValue());
-            }
-        });
         amplitudeMonitor.startMonitoring();
     }
 
+
+
     private void startRecording(double initAmp) {
-        noiseRecorder.subscribeToResult().subscribeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<RecordingResult>() {
-            @Override
-            public void accept(RecordingResult recordingResult) throws Exception {
-                Log.d("rowan", "posting...");
-                postData(recordingResult);
-                amplitudeMonitor.startMonitoring();
-            }
-        });
         noiseRecorder.startRecording(initAmp);
     }
 

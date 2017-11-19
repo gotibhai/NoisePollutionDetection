@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.io.IOException;
 
+import hackwestern.noisedetection.AmplitudeMonitorCallback;
 import io.reactivex.Observable;
 import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
@@ -15,17 +16,16 @@ import io.reactivex.subjects.PublishSubject;
  */
 
 public class AmplitudeMonitor {
-    public static final int AMPLITUDE_THRESHOLD = 30000;
+    public static final int AMPLITUDE_THRESHOLD = 25000;
     public static final int AMPLITUDE_POLL_RATE = 250;
 
-    private BehaviorSubject<Double> thresholdSubject = BehaviorSubject.create();
     private MediaRecorder mRecorder;
     private Handler mHandler = new Handler();
+    private AmplitudeMonitorCallback callback;
 
-    public Observable<Double> thresholdPassed() {
-        return thresholdSubject;
+    AmplitudeMonitor(AmplitudeMonitorCallback callback) {
+        this.callback = callback;
     }
-
     public void startMonitoring() {
         Log.d("rowan", "monitoring...");
         startMediaRecorder();
@@ -54,11 +54,9 @@ public class AmplitudeMonitor {
         public void run() {
             double amp = mRecorder.getMaxAmplitude();
             if (amp > AMPLITUDE_THRESHOLD) {
-                mRecorder.stop();
-                mRecorder.reset();
                 mRecorder.release();
                 mRecorder = null;
-                thresholdSubject.onNext(amp);
+                callback.onTresholdPassed(amp);
             } else {
                 mHandler.postDelayed(mMonitor, AMPLITUDE_POLL_RATE);
             }
