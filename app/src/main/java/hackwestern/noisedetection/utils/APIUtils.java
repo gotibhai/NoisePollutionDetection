@@ -10,7 +10,7 @@ import hackwestern.noisedetection.services.RetrofitClient;
 public class APIUtils {
     private APIUtils() {}
 
-    public static final String BASE_URL = "http://37c62573.ngrok.io/";
+    public static final String BASE_URL = "http://28b2792b.ngrok.io/";
 
     public static APIService getAPIService() {
 
