@@ -6,14 +6,18 @@ import android.os.Handler;
 import android.util.Base64;
 import android.util.Log;
 
+import java.io.File;
 import java.io.IOException;
 
 import hackwestern.noisedetection.NoiseRecordingCallback;
 import hackwestern.noisedetection.models.RecordingResult;
 import hackwestern.noisedetection.utils.FileUtils;
+import hackwestern.noisedetection.utils.audio_clipping.CheapSoundFile;
+import hackwestern.noisedetection.utils.audio_clipping.Util;
 import io.reactivex.Observable;
 import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
+
 
 import static hackwestern.noisedetection.services.AmplitudeMonitor.AMPLITUDE_POLL_RATE;
 import static hackwestern.noisedetection.services.AmplitudeMonitor.AMPLITUDE_THRESHOLD;
@@ -28,8 +32,9 @@ public class NoiseRecorder {
 
     private MediaRecorder mRecorder;
     private String audioFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/audio_file.mp3";
+    private String cutAudioFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/cut_audio_file.mp3";
     private Handler mHandler = new Handler();
-    private double totalAmp;
+    long startTime;
     private double maxAmp;
     private int ampRecordCount;
     private NoiseRecordingCallback callback;
@@ -57,11 +62,11 @@ public class NoiseRecorder {
 
     public void startRecording(double initAmp) {
         startMediaRecorder();
-        totalAmp = initAmp;
         maxAmp = initAmp;
         ampRecordCount = 1;
         mRecorder.getMaxAmplitude();
         mHandler.postDelayed(mEndMonitor, MIN_RECORD_TIME);
+        startTime =  System.nanoTime();
     }
 
     private Runnable mEndMonitor = new Runnable() {
@@ -69,13 +74,19 @@ public class NoiseRecorder {
         public void run() {
             double amp = mRecorder.getMaxAmplitude();
             Log.d("rowan", "recorder got new amp: " + amp);
-            NoiseRecorder.this.totalAmp += amp;
-            NoiseRecorder.this.ampRecordCount++;
             NoiseRecorder.this.maxAmp = Math.max(NoiseRecorder.this.maxAmp, amp);
-            double avgAmp = NoiseRecorder.this.totalAmp / NoiseRecorder.this.ampRecordCount;
-            Log.d("rowan", "newAvg: " + avgAmp);
-
-            if (avgAmp < AMPLITUDE_THRESHOLD) {
+            NoiseRecorder.this.ampRecordCount++;
+            boolean cancel = false;
+            if(NoiseRecorder.this.ampRecordCount >= 12) {
+                if (NoiseRecorder.this.maxAmp < AMPLITUDE_THRESHOLD) {
+                    cancel = true;
+                }
+                else {
+                    NoiseRecorder.this.ampRecordCount = 0;
+                    NoiseRecorder.this.maxAmp = 0;
+                }
+            }
+            if (cancel) {
                 NoiseRecorder.this.stopAndSendResult();
             } else {
                 mHandler.postDelayed(mEndMonitor, AMPLITUDE_POLL_RATE);
@@ -86,6 +97,47 @@ public class NoiseRecorder {
     private void stopAndSendResult() {
         mRecorder.release();
         mRecorder = null;
+//        final CheapSoundFile.ProgressListener listener = new CheapSoundFile.ProgressListener() {
+//            public boolean reportProgress(double frac) {
+//                Log.d("rowan", "progress: " + frac);
+//                if(frac > 99.999) {
+//                            byte[] bytes = new byte[0];
+//        try {
+//            bytes = FileUtils.readFileToString(audioFile);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        String encoded = Base64.encodeToString(bytes, 0);
+//        RecordingResult res = new RecordingResult();
+//        res.setData(encoded);
+//        res.setMaxAmplitude(maxAmp);
+//        callback.onRecordingResult(res);
+//                }
+//                return true;
+//            }
+//        };
+//        CheapSoundFile cheapSoundFile = null;
+//        try {
+//            cheapSoundFile = CheapSoundFile.create(audioFile,listener);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//
+//        int mSampleRate = cheapSoundFile.getSampleRate();
+//
+//        int mSamplesPerFrame = cheapSoundFile.getSamplesPerFrame();
+//
+//        int startFrame = Util.secondsToFrames(0,mSampleRate, mSamplesPerFrame);
+//
+//        int endFrame = Util.secondsToFrames(this.startTime - System.nanoTime() - 3, mSampleRate,mSamplesPerFrame);
+//
+//        try {
+//            cheapSoundFile.WriteFile(new File(cutAudioFile), startFrame, endFrame-startFrame);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+
         byte[] bytes = new byte[0];
         try {
             bytes = FileUtils.readFileToString(audioFile);
